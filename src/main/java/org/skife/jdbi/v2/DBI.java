@@ -357,7 +357,7 @@ public class DBI implements IDBI
      * Add a callback to accumulate timing information about the queries running from this
      * data source.
      */
-    void setTimingCollector(final TimingCollector timingCollector) {
+    public void setTimingCollector(final TimingCollector timingCollector) {
         if (timingCollector == null) {
             this.timingCollector = TimingCollector.NOP_TIMING_COLLECTOR;
         }
