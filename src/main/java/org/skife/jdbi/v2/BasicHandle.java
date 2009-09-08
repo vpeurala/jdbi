@@ -34,6 +34,7 @@ class BasicHandle implements Handle
 {
     private final TransactionHandler transactions;
     private final Connection connection;
+    private final TimingCollector timingCollector;
     private StatementRewriter statementRewriter;
     private StatementLocator statementLocator;
     private SQLLog log;
@@ -46,13 +47,15 @@ class BasicHandle implements Handle
                        StatementRewriter statementRewriter,
                        Connection connection,
                        Map<String, Object> globalStatementAttributes,
-                       SQLLog log) {
+                       SQLLog log,
+                       TimingCollector timingCollector) {
         this.statementBuilder = preparedStatementCache;
         this.statementRewriter = statementRewriter;
         this.transactions = transactions;
         this.connection = connection;
         this.statementLocator = statementLocator;
         this.log = log;
+        this.timingCollector = timingCollector;
         this.globalStatementAttributes = new HashMap<String, Object>();
         this.globalStatementAttributes.putAll(globalStatementAttributes);
     }
@@ -66,7 +69,8 @@ class BasicHandle implements Handle
                                               statementBuilder,
                                               sql,
                                               new StatementContext(globalStatementAttributes),
-                                              log);
+                                              log,
+                                              timingCollector);
     }
 
     /**
@@ -177,7 +181,8 @@ class BasicHandle implements Handle
                           statementBuilder,
                           sql,
                           new StatementContext(globalStatementAttributes),
-                          log);
+                          log,
+                          timingCollector);
     }
 
     public Call createCall(String sql) {
@@ -187,7 +192,8 @@ class BasicHandle implements Handle
                         statementBuilder,
                         sql,
                         new StatementContext(globalStatementAttributes),
-                        log);
+                        log,
+                        timingCollector);
     }
 
     public int insert(String sql, Object... args) {
@@ -210,11 +216,16 @@ class BasicHandle implements Handle
                                  statementBuilder,
                                  sql,
                                  globalStatementAttributes,
-                                 log);
+                                 log,
+                                 timingCollector);
     }
 
     public Batch createBatch() {
-        return new Batch(this.statementRewriter, this.connection, globalStatementAttributes, log);
+        return new Batch(this.statementRewriter,
+                         this.connection,
+                         globalStatementAttributes,
+                         log,
+                         timingCollector);
     }
 
     public <ReturnType> ReturnType inTransaction(TransactionCallback<ReturnType> callback) throws TransactionFailedException {
