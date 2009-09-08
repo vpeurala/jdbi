@@ -19,7 +19,10 @@ public interface TimingCollector
      * A No Operation Timing Collector. It can be used to "plug" into DBI if more sophisticated
      * collection is not needed.
      */
-    TimingCollector NOP_TIMING_COLLECTOR = new TimingCollector() {
+    TimingCollector NOP_TIMING_COLLECTOR = new NopTimingCollector();
+
+    public static final class NopTimingCollector implements TimingCollector
+    {
         public void collect(final String sql, final StatementContext ctx, final long elapsedTime)
         {
             // GNDN
