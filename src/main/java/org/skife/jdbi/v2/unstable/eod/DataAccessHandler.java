@@ -20,6 +20,7 @@ import org.skife.jdbi.v2.Handle;
 import org.skife.jdbi.v2.Query;
 import org.skife.jdbi.v2.SQLStatement;
 import org.skife.jdbi.v2.Update;
+import org.skife.jdbi.v2.tweak.ResultSetMapper;
 
 import java.lang.reflect.InvocationHandler;
 import java.lang.reflect.Method;
@@ -75,6 +76,22 @@ class DataAccessHandler implements InvocationHandler
         return f.doit(q);
     }
 
+    @SuppressWarnings("rawtypes")
+	private Object execute(MappedSelect s, Method method, Object[] args, Foo f)
+    {
+        Type t = method.getGenericReturnType();
+        assert(t instanceof ParameterizedType);
+        ParameterizedType returnType = (ParameterizedType) t;
+        final Type[] h = returnType.getActualTypeArguments();
+        assert(h.length == 1);
+        assert(h[0] instanceof Class);
+        Query q = handle.createQuery(s.sql()).map(mapper(s));
+        if (args != null) bindArguments(method.isAnnotationPresent(BindBy.class) ?
+                                        method.getAnnotation(BindBy.class).value() :
+                                        BindType.Position, q, args);
+        return f.doit(q);
+    }
+
     @SuppressWarnings("unchecked")
     private Object handleInstance(Select s, Method method, Object[] args)
     {
@@ -88,6 +105,30 @@ class DataAccessHandler implements InvocationHandler
         q.setMaxRows(1);
         return q.first();
     }
+
+    private Object handleInstance(MappedSelect s, Method method, Object[] args)
+    {
+        Query q = handle.createQuery(s.sql()).map(mapper(s));
+        if (args != null) bindArguments(method.isAnnotationPresent(BindBy.class) ?
+                                        method.getAnnotation(BindBy.class).value() :
+                                        BindType.Position, q, args);
+        if (args != null) bindArguments(method.isAnnotationPresent(BindBy.class) ?
+                                        method.getAnnotation(BindBy.class).value() :
+                                        BindType.Position, q, args);
+        q.setMaxRows(1);
+        return q.first();
+    }
+
+	private ResultSetMapper<?> mapper(MappedSelect s)
+	{
+		try {
+			return s.mapper().newInstance();
+		} catch (InstantiationException e) {
+			throw new RuntimeException(e);
+		} catch (IllegalAccessException e) {
+			throw new RuntimeException(e);
+		}
+	}
 
     private Object handleDML(String s, Method method, Object[] args)
     {
@@ -132,6 +173,20 @@ class DataAccessHandler implements InvocationHandler
                 return this.execute(s, method, args, ITTIFIER);
             }
             return this.handleInstance(s, method, args);
+        }
+        else if (method.isAnnotationPresent(MappedSelect.class))
+        {
+        final MappedSelect ms = method.getAnnotation(MappedSelect.class);
+        final Class<?> returnTypeClass = method.getReturnType();
+            if (List.class.isAssignableFrom(returnTypeClass))
+            {
+                return this.execute(ms, method, args, LISTIFIER);
+            }
+            if (Iterator.class.isAssignableFrom(returnTypeClass))
+            {
+                return this.execute(ms, method, args, ITTIFIER);
+            }
+            return this.handleInstance(ms, method, args);
         }
         else if (method.isAnnotationPresent(Insert.class))
         {
